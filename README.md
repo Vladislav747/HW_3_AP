@@ -9,8 +9,8 @@ source venv/bin/activate
 
 pip install -r requirements.txt
 
-# локально в папке backend
-uvicorn app.main:app --reload
+# запуск локально в папке backend
+uvicorn main:app --reload
 ```
 
 Открывается тут
@@ -19,8 +19,16 @@ uvicorn app.main:app --reload
 http://localhost/
 ```
 
-инициализация БД
+При начале работы с БД
+
+Выполнить инициализацию БД в папке backend
 
 ```
 python init_db.py
+```
+
+Применить миграции в папке backend
+
+```
+alembic upgrade head
 ```
