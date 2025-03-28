@@ -1,10 +1,15 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
+from sqlalchemy.orm import Session
 from pydantic import BaseModel, HttpUrl, ValidationError
 from datetime import datetime
 from typing import Dict
+
+from models.models import LinkCreate
 from utils_new.utils import generate_short_code
+from database import get_db
 
 router = APIRouter()
+
 
 # Модель для хранения информации о ссылке
 class Link(BaseModel):
@@ -18,14 +23,21 @@ links_db: Dict[str, Link] = {}
 
 # Создание короткой ссылки
 @router.post("/links/shorten")
-def create_short_link(payload: Dict):
+def create_short_link(payload: Dict, db: Session = Depends(get_db)):
     try:
         short_code = generate_short_code()
-        link = Link(
+        link_for_local = Link(
             original_url=HttpUrl(payload['original_url']),
             short_code=short_code,
         )
-        links_db[short_code] = link
+        links_db[short_code] = link_for_local
+        db_link = LinkCreate(
+            original_url=str(payload['original_url']),
+            short_code=short_code,
+        )
+
+        db.add(db_link)
+        db.commit()
         return {"short_code": short_code}
 
     except ValidationError as e:
@@ -96,4 +108,3 @@ def get_link_stats(short_code: str):
     return {
         "original_url": link.original_url,
     }
-

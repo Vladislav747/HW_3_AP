@@ -3,5 +3,4 @@ from routes import router
 
 app = FastAPI()
 
-# Подключаем роутер
 app.include_router(router)

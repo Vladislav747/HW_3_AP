@@ -19,3 +19,8 @@ uvicorn app.main:app --reload
 http://localhost/
 ```
 
+инициализация БД
+
+```
+python init_db.py
+```

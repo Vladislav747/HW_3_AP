@@ -4,10 +4,10 @@ WORKDIR /app
 COPY . .
 
 RUN apt-get update && \
-    apt-get upgrade && \
+    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
     apt-get install --no-install-recommends -y curl && \
     pip install --upgrade pip && \
-    pip install -r requirements.txt --no-cache-dir && \
-    rm -rf /var/lib/apt/lists/*
+    pip install --no-cache-dir -r requirements.txt
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
