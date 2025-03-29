@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime
+from sqlalchemy import Column, String, DateTime, Integer
 from sqlalchemy.orm import declarative_base
 
 from datetime import datetime, timedelta
@@ -13,3 +13,5 @@ class Link(Base):
     original_url = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=False, default=lambda: datetime.utcnow() + timedelta(minutes=5))
+    clicks_count = Column(Integer, default=0)
+    last_clicked_at = Column(DateTime, nullable=True)

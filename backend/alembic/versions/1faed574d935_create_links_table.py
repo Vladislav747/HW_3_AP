@@ -25,6 +25,8 @@ def upgrade() -> None:
     sa.Column('original_url', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('expires_at', sa.DateTime(), nullable=False),
+    sa.Column('clicks_count', sa.Integer(), nullable=False),
+    sa.Column('last_clicked_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('short_code')
     )
     op.create_index(op.f('ix_links_short_code'), 'links', ['short_code'], unique=False)
