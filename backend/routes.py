@@ -9,11 +9,13 @@ from database import get_db
 
 router = APIRouter()
 
+
 # Создание короткой ссылки
 @router.post("/links/shorten")
 def create_short_link(payload: Dict, db: Session = Depends(get_db)):
     try:
-        if payload['custom_alias'] is not None:
+        custom_alias = payload.get('custom_alias')
+        if custom_alias is not None:
             short_code = payload['custom_alias']
 
             link = db.query(Link).filter(Link.short_code == short_code).first()
@@ -25,6 +27,7 @@ def create_short_link(payload: Dict, db: Session = Depends(get_db)):
                 )
 
         else:
+            print('here')
             short_code = generate_short_code()
 
         db_link = Link(
@@ -41,10 +44,16 @@ def create_short_link(payload: Dict, db: Session = Depends(get_db)):
             status_code=422,
             detail=f"Invalid URL"
         )
-    except KeyError:
+    except KeyError as e:
         raise HTTPException(
             status_code=400,
-            detail="Missing 'original_url' in payload"
+            detail=f"Missing key: {str(e)} in payload"
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail="Unknown error"
         )
 
 
@@ -53,7 +62,6 @@ def create_short_link(payload: Dict, db: Session = Depends(get_db)):
 def search_link_by_url(
         original_url: str,
         db: Session = Depends(get_db)):
-
     link = db.query(Link).filter(Link.original_url == original_url).first()
     if not link:
         raise HTTPException(status_code=404, detail="Link not found")
@@ -74,19 +82,21 @@ def delete_link(short_code: str, db: Session = Depends(get_db)):
     return {"message": f"Link {short_code} deleted"}
 
 
+# Обновить ссылку
 @router.put("/links/{short_code}")
-def update_link(short_code: str, new_url: HttpUrl, db: Session = Depends(get_db)):
+def update_link(short_code: str, new_url: Dict, db: Session = Depends(get_db)):
     link = db.query(Link).filter(Link.short_code == short_code).first()
 
     if not link:
         raise HTTPException(status_code=404, detail="Link not found")
 
-    link.original_url = str(new_url)  # Сохраняем новый URL
+    link.original_url = str(new_url)
     db.commit()
 
     return {"message": "Link updated", "short_code": short_code, "new_url": new_url}
 
 
+# Получить статистику по ссылке
 @router.get("/links/{short_code}/stats")
 def get_link_stats(short_code: str, db: Session = Depends(get_db)):
     link = db.query(Link).filter(Link.short_code == short_code).first()
@@ -94,4 +104,4 @@ def get_link_stats(short_code: str, db: Session = Depends(get_db)):
     if not link:
         raise HTTPException(status_code=404, detail="Link not found")
 
-    return {"original_url": link.original_url}
+    return {"original_url": link.original_url, "created_at": link.created_at, "expires_at": link.expires_at}

@@ -32,3 +32,8 @@ python init_db.py
 ```
 alembic upgrade head
 ```
+
+Откатить все миграции
+```
+alembic downgrade base 
+```
