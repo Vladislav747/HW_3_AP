@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from starlette.responses import RedirectResponse
 
@@ -13,14 +13,16 @@ from utils_new.utils import generate_short_code, is_valid_url
 from datetime import datetime
 
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/links",
+    tags=["links"]
+)
 
 
-@router.post("/links/shorten")
+@router.post("/shorten")
 def create_short_link(payload: Dict, db: Session = Depends(get_db)):
     try:
         is_url_valid = is_valid_url(payload['original_url'])
-        print(is_url_valid, "is_url_valid")
         if is_url_valid is False:
             return JSONResponse(status_code=422, content={"detail": "Invalid URL format - use right template like https://example.com or http://www.aa.com"})
         custom_alias = payload.get('custom_alias')
@@ -66,7 +68,7 @@ def create_short_link(payload: Dict, db: Session = Depends(get_db)):
 
 
 # Поиск ссылки по оригинальному URL
-@router.get("/links/search")
+@router.get("/search")
 def search_link_by_url(
         original_url: str,
         db: Session = Depends(get_db)):
@@ -77,7 +79,7 @@ def search_link_by_url(
 
 
 # Удаление короткой ссылки
-@router.delete("/links/{short_code}")
+@router.delete("/{short_code}")
 def delete_link(short_code: str, db: Session = Depends(get_db)):
     link = db.query(Link).filter(Link.short_code == short_code).first()
 
@@ -91,7 +93,7 @@ def delete_link(short_code: str, db: Session = Depends(get_db)):
 
 
 # Обновить ссылку
-@router.put("/links/{short_code}")
+@router.put("/{short_code}")
 def update_link(short_code: str, new_url: Dict, db: Session = Depends(get_db)):
     link = db.query(Link).filter(Link.short_code == short_code).first()
 
@@ -108,9 +110,8 @@ def update_link(short_code: str, new_url: Dict, db: Session = Depends(get_db)):
     return {"message": "Link updated", "short_code": short_code, "new_url": new_url}
 
 
-@router.get("/links/expired")
+@router.get("/expired")
 def get_expired_links(db: Session = Depends(get_db)):
-    print('here')
     now = datetime.utcnow()
     expired_links = db.query(Link).filter(Link.expires_at < now).all()
 
@@ -131,7 +132,7 @@ def get_expired_links(db: Session = Depends(get_db)):
 
 
 # Получить статистику по ссылке
-@router.get("/links/{short_code}/stats")
+@router.get("/{short_code}/stats")
 def get_link_stats(short_code: str, db: Session = Depends(get_db)):
     link = db.query(Link).filter(Link.short_code == short_code).first()
 
@@ -147,7 +148,7 @@ def get_link_stats(short_code: str, db: Session = Depends(get_db)):
     }
 
 
-@router.get("/links/{short_code}")
+@router.get("/{short_code}")
 def redirect_to_original(short_code: str, db: Session = Depends(get_db)):
     link = db.query(Link).filter(Link.short_code == short_code).first()
 

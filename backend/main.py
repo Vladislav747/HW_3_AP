@@ -1,10 +1,11 @@
 from fastapi import FastAPI, HTTPException, Query
-from routes import router
+from routers import users, links
 import uvicorn
 
 app = FastAPI()
 
-app.include_router(router)
+app.include_router(users.router)
+app.include_router(links.router)
 
 if __name__ == "__main__":
     uvicorn.run(

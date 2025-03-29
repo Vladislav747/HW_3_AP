@@ -14,3 +14,9 @@ def is_valid_url(url: str) -> bool:
         return all([result.scheme, result.netloc])
     except AttributeError:
         return False
+
+
+def generate_access_token():
+    token = secrets.token_urlsafe(32)
+
+    return token
