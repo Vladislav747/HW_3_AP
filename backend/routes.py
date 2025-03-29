@@ -1,37 +1,33 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, HttpUrl, ValidationError
-from datetime import datetime
 from typing import Dict
 
-from models.models import LinkCreate
+from models.models import Link
 from utils_new.utils import generate_short_code
 from database import get_db
 
 router = APIRouter()
 
-
-# Модель для хранения информации о ссылке
-class Link(BaseModel):
-    original_url: HttpUrl
-    short_code: str
-
-
-# Хранение данных в памяти (в реальном приложении используйте базу данных)
-links_db: Dict[str, Link] = {}
-
-
 # Создание короткой ссылки
 @router.post("/links/shorten")
 def create_short_link(payload: Dict, db: Session = Depends(get_db)):
     try:
-        short_code = generate_short_code()
-        link_for_local = Link(
-            original_url=HttpUrl(payload['original_url']),
-            short_code=short_code,
-        )
-        links_db[short_code] = link_for_local
-        db_link = LinkCreate(
+        if payload['custom_alias'] is not None:
+            short_code = payload['custom_alias']
+
+            link = db.query(Link).filter(Link.short_code == short_code).first()
+
+            if link is not None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Duplicate alias '{short_code}' already exists. Please choose a different alias."""
+                )
+
+        else:
+            short_code = generate_short_code()
+
+        db_link = Link(
             original_url=str(payload['original_url']),
             short_code=short_code,
         )
@@ -54,57 +50,48 @@ def create_short_link(payload: Dict, db: Session = Depends(get_db)):
 
 # Поиск ссылки по оригинальному URL
 @router.get("/links/search")
-def search_link_by_url(original_url: HttpUrl = Query(..., description="Original URL to search for")):
-    for link in links_db.values():
-        if link.original_url == original_url:
-            return {"short_code": link.short_code}
-    raise HTTPException(status_code=404, detail="Link not found")
+def search_link_by_url(
+        original_url: str,
+        db: Session = Depends(get_db)):
 
-
-# Перенаправление по короткой ссылке
-@router.get("/links/{short_code}")
-def redirect_to_original(short_code: str):
-    if short_code not in links_db:
+    link = db.query(Link).filter(Link.original_url == original_url).first()
+    if not link:
         raise HTTPException(status_code=404, detail="Link not found")
-
-    link = links_db[short_code]
-    if link.expires_at and link.expires_at < datetime.now():
-        raise HTTPException(status_code=410, detail="Link has expired")
-
-    link.clicks += 1
-    link.last_clicked_at = datetime.now()
-    return {"redirect_to": link.original_url}
+    return {"short_code": link.short_code}
 
 
 # Удаление короткой ссылки
 @router.delete("/links/{short_code}")
-def delete_link(short_code: str):
-    if short_code not in links_db:
+def delete_link(short_code: str, db: Session = Depends(get_db)):
+    link = db.query(Link).filter(Link.short_code == short_code).first()
+
+    if not link:
         raise HTTPException(status_code=404, detail="Link not found")
 
-    del links_db[short_code]
+    db.delete(link)
+    db.commit()
+
     return {"message": f"Link {short_code} deleted"}
 
 
-# Обновление URL для короткой ссылки
 @router.put("/links/{short_code}")
-def update_link(short_code: str, new_url: HttpUrl):
-    if short_code not in links_db:
+def update_link(short_code: str, new_url: HttpUrl, db: Session = Depends(get_db)):
+    link = db.query(Link).filter(Link.short_code == short_code).first()
+
+    if not link:
         raise HTTPException(status_code=404, detail="Link not found")
 
-    link = links_db[short_code]
-    link.original_url = new_url
+    link.original_url = str(new_url)  # Сохраняем новый URL
+    db.commit()
+
     return {"message": "Link updated", "short_code": short_code, "new_url": new_url}
 
 
-# Получение статистики по короткой ссылке
 @router.get("/links/{short_code}/stats")
-def get_link_stats(short_code: str):
-    print(links_db.items())
-    if short_code not in links_db:
+def get_link_stats(short_code: str, db: Session = Depends(get_db)):
+    link = db.query(Link).filter(Link.short_code == short_code).first()
+
+    if not link:
         raise HTTPException(status_code=404, detail="Link not found")
 
-    link = links_db[short_code]
-    return {
-        "original_url": link.original_url,
-    }
+    return {"original_url": link.original_url}

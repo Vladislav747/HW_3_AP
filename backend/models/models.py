@@ -5,7 +5,7 @@ from sqlalchemy.orm import declarative_base
 Base = declarative_base()
 
 
-class LinkCreate(Base):
+class Link(Base):
     __tablename__ = "links"
 
     short_code = Column(String, primary_key=True, index=True)
