@@ -1,9 +1,7 @@
 from sqlalchemy import Column, String, DateTime, Integer
-from sqlalchemy.orm import declarative_base
 
 from datetime import datetime, timedelta
-
-Base = declarative_base()
+from models.base import Base
 
 
 class Link(Base):

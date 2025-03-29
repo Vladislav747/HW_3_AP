@@ -8,7 +8,7 @@ from typing import Dict
 
 from database import get_db
 
-from models.models import Link
+from models.links import Link
 from utils_new.utils import generate_short_code, is_valid_url
 from datetime import datetime
 
@@ -106,6 +106,28 @@ def update_link(short_code: str, new_url: Dict, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Link updated", "short_code": short_code, "new_url": new_url}
+
+
+@router.get("/links/expired")
+def get_expired_links(db: Session = Depends(get_db)):
+    print('here')
+    now = datetime.utcnow()
+    expired_links = db.query(Link).filter(Link.expires_at < now).all()
+
+    if not expired_links:
+        return {"message": "No expired links found"}
+
+    return [
+        {
+            "short_code": link.short_code,
+            "original_url": link.original_url,
+            "created_at": link.created_at,
+            "expires_at": link.expires_at,
+            "clicks": link.clicks_count,
+            "last_clicked_at": link.last_clicked_at,
+        }
+        for link in expired_links
+    ]
 
 
 # Получить статистику по ссылке
