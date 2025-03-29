@@ -1,16 +1,21 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
+
 from starlette.responses import RedirectResponse
 
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, HttpUrl, ValidationError
 from typing import Dict
 
+from datetime import datetime
+
 from database import get_db
 
 from models.links import Link
+from models.user import User
+
 from utils_new.utils import generate_short_code, is_valid_url
-from datetime import datetime
+from security.user import get_current_user
 
 
 router = APIRouter(
@@ -20,7 +25,11 @@ router = APIRouter(
 
 
 @router.post("/shorten")
-def create_short_link(payload: Dict, db: Session = Depends(get_db)):
+def create_short_link(
+        payload: Dict,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
     try:
         is_url_valid = is_valid_url(payload['original_url'])
         if is_url_valid is False:
@@ -80,7 +89,11 @@ def search_link_by_url(
 
 # Удаление короткой ссылки
 @router.delete("/{short_code}")
-def delete_link(short_code: str, db: Session = Depends(get_db)):
+def delete_link(
+        short_code: str,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
     link = db.query(Link).filter(Link.short_code == short_code).first()
 
     if not link:
@@ -94,7 +107,12 @@ def delete_link(short_code: str, db: Session = Depends(get_db)):
 
 # Обновить ссылку
 @router.put("/{short_code}")
-def update_link(short_code: str, new_url: Dict, db: Session = Depends(get_db)):
+def update_link(
+        short_code: str,
+        new_url: Dict,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
     link = db.query(Link).filter(Link.short_code == short_code).first()
 
     if not link:

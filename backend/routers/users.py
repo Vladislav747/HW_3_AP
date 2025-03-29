@@ -26,7 +26,11 @@ def auth(payload: Dict, db: Session = Depends(get_db)):
         )
 
     if current_user.password == payload['password']:
-        return {"access_token": current_user.access_token}
+        new_access_token = generate_access_token()
+        current_user.access_token = new_access_token
+        current_user.expires_at = str(datetime.utcnow() + timedelta(minutes=1))
+        db.commit()
+        return {"access_token": new_access_token}
 
     raise HTTPException(
         status_code=403,

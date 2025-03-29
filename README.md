@@ -16,7 +16,12 @@ uvicorn main:app --reload
 Открывается тут
 
 ```
-http://localhost/
+http://localhost:8000
+```
+
+Документация Swagger
+```
+http://localhost:8000/docs
 ```
 
 При начале работы с БД
