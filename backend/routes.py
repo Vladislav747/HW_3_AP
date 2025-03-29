@@ -1,19 +1,22 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, HttpUrl, ValidationError
 from typing import Dict
 
 from models.models import Link
-from utils_new.utils import generate_short_code
+from utils_new.utils import generate_short_code, is_valid_url
 from database import get_db
 
 router = APIRouter()
 
 
-# Создание короткой ссылки
 @router.post("/links/shorten")
 def create_short_link(payload: Dict, db: Session = Depends(get_db)):
     try:
+        is_url_valid = is_valid_url(payload['original_url'])
+        if is_url_valid is False:
+            return JSONResponse(status_code=422, content={"detail": "Invalid URL format - use right template like https://example.com or http://www.aa.com"})
         custom_alias = payload.get('custom_alias')
         if custom_alias is not None:
             short_code = payload['custom_alias']
