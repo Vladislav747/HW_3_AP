@@ -16,6 +16,7 @@ from models.user import User
 
 from utils_new.utils import generate_short_code, is_valid_url
 from security.user import get_current_user
+from cache import cache, invalidate_cache
 
 
 router = APIRouter(
@@ -78,6 +79,7 @@ def create_short_link(
 
 # Поиск ссылки по оригинальному URL
 @router.get("/search")
+@cache(expire=300, prefix="links")
 def search_link_by_url(
         original_url: str,
         db: Session = Depends(get_db)):
@@ -89,7 +91,7 @@ def search_link_by_url(
 
 # Удаление короткой ссылки
 @router.delete("/{short_code}")
-def delete_link(
+async def delete_link(
         short_code: str,
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
@@ -102,12 +104,15 @@ def delete_link(
     db.delete(link)
     db.commit()
 
+    await invalidate_cache("link", short_code)  # Удаляем кэш конкретной ссылки
+    await invalidate_cache("links")  # Удаляем кэш всех ссылок
+
     return {"message": f"Link {short_code} deleted"}
 
 
 # Обновить ссылку
 @router.put("/{short_code}")
-def update_link(
+async def update_link(
         short_code: str,
         new_url: Dict,
         db: Session = Depends(get_db),
@@ -124,6 +129,9 @@ def update_link(
 
     link.original_url = str(new_url)
     db.commit()
+
+    await invalidate_cache("link", short_code)  # Удаляем кэш конкретной ссылки
+    await invalidate_cache("links")  # Удаляем кэш всех ссылок
 
     return {"message": "Link updated", "short_code": short_code, "new_url": new_url}
 
@@ -151,6 +159,7 @@ def get_expired_links(db: Session = Depends(get_db)):
 
 # Получить статистику по ссылке
 @router.get("/{short_code}/stats")
+@cache(expire=300, prefix="links")
 def get_link_stats(short_code: str, db: Session = Depends(get_db)):
     link = db.query(Link).filter(Link.short_code == short_code).first()
 

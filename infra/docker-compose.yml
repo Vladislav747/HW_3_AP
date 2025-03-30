@@ -7,6 +7,13 @@ services:
       context: ../backend/
       dockerfile: Dockerfile
     container_name: backend_fast_api
+    networks:
+      - app_network
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379
     restart: always
     volumes:
       - ../backend/:/app
@@ -26,6 +33,8 @@ services:
   postgres:
     image: postgres:13
     container_name: postgres
+    networks:
+      - app_network
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -36,6 +45,27 @@ services:
     ports:
       - "5432:5432"
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    networks:
+      - app_network
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   logs_volume:
   postgres_data:
+  redis_data:
+
+networks:
+  app_network:
+    driver: bridge
