@@ -5,7 +5,7 @@ from starlette.responses import RedirectResponse
 
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, HttpUrl, ValidationError
-from typing import Dict
+from typing import Dict, List
 
 from datetime import datetime
 
@@ -18,6 +18,15 @@ from utils_new.utils import generate_short_code, is_valid_url
 from security.user import get_current_user
 from cache import cache, invalidate_cache
 
+from schemas.links import (
+    ShortenLinkRequest,
+    ShortenLinkResponse,
+    ErrorResponse,
+    LinkResponse,
+    UpdateLinkRequest,
+    LinkExpiredResponse,
+    LinkStatsResponse
+)
 
 router = APIRouter(
     prefix="/links",
@@ -25,19 +34,26 @@ router = APIRouter(
 )
 
 
-@router.post("/shorten")
+@router.post(
+    "/shorten",
+    response_model=ShortenLinkResponse,
+    responses={
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        400: {"model": ErrorResponse, "description": "Bad request"}
+    }
+)
 def create_short_link(
-        payload: Dict,
+        payload: ShortenLinkRequest,
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
 ):
     try:
-        is_url_valid = is_valid_url(payload['original_url'])
+        is_url_valid = is_valid_url(payload.original_url)
         if is_url_valid is False:
             return JSONResponse(status_code=422, content={"detail": "Invalid URL format - use right template like https://example.com or http://www.aa.com"})
-        custom_alias = payload.get('custom_alias')
+        custom_alias = payload.custom_alias
         if custom_alias is not None:
-            short_code = payload['custom_alias']
+            short_code = payload.custom_alias
 
             link = db.query(Link).filter(Link.short_code == short_code).first()
 
@@ -51,7 +67,7 @@ def create_short_link(
             short_code = generate_short_code()
 
         db_link = Link(
-            original_url=str(payload['original_url']),
+            original_url=str(payload.original_url),
             short_code=short_code,
         )
 
@@ -64,11 +80,6 @@ def create_short_link(
             status_code=422,
             detail=f"Invalid URL"
         )
-    except KeyError as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Missing key: {str(e)} in payload"
-        )
 
     except Exception as e:
         raise HTTPException(
@@ -78,7 +89,11 @@ def create_short_link(
 
 
 # Поиск ссылки по оригинальному URL
-@router.get("/search")
+@router.get(
+    "/search",
+    response_model=ShortenLinkResponse,
+    responses={404: {"model": ErrorResponse}}
+)
 @cache(expire=300, prefix="links")
 def search_link_by_url(
         original_url: str,
@@ -111,10 +126,17 @@ async def delete_link(
 
 
 # Обновить ссылку
-@router.put("/{short_code}")
+@router.put(
+    "/{short_code}",
+    response_model=LinkResponse,
+    responses={
+        404: {"model": ErrorResponse},
+        410: {"model": ErrorResponse}
+    }
+)
 async def update_link(
         short_code: str,
-        new_url: Dict,
+        payload: UpdateLinkRequest,
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
 ):
@@ -127,16 +149,19 @@ async def update_link(
     if link.expires_at < datetime.utcnow():
         raise HTTPException(status_code=410, detail="Link has expired and cannot be updated")
 
-    link.original_url = str(new_url)
+    link.original_url = str(payload.new_url)
     db.commit()
 
     await invalidate_cache("link", short_code)  # Удаляем кэш конкретной ссылки
     await invalidate_cache("links")  # Удаляем кэш всех ссылок
 
-    return {"message": "Link updated", "short_code": short_code, "new_url": new_url}
+    return {"message": "Link updated", "short_code": short_code, "new_url": str(payload.new_url)}
 
 
-@router.get("/expired")
+@router.get(
+    "/expired",
+    response_model=List[LinkExpiredResponse],
+)
 def get_expired_links(db: Session = Depends(get_db)):
     now = datetime.utcnow()
     expired_links = db.query(Link).filter(Link.expires_at < now).all()
@@ -158,7 +183,11 @@ def get_expired_links(db: Session = Depends(get_db)):
 
 
 # Получить статистику по ссылке
-@router.get("/{short_code}/stats")
+@router.get(
+    "/{short_code}/stats",
+    response_model=LinkStatsResponse,
+    responses={404: {"model": ErrorResponse}}
+)
 @cache(expire=300, prefix="links")
 def get_link_stats(short_code: str, db: Session = Depends(get_db)):
     link = db.query(Link).filter(Link.short_code == short_code).first()
