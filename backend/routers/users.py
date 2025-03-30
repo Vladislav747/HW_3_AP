@@ -18,6 +18,7 @@ router = APIRouter(
 @router.post("/auth")
 def auth(payload: Dict, db: Session = Depends(get_db)):
     current_user = db.query(User).filter(User.login == payload['login']).first()
+    duration_minutes_access_token = 5
 
     if current_user is None:
         raise HTTPException(
@@ -28,7 +29,7 @@ def auth(payload: Dict, db: Session = Depends(get_db)):
     if current_user.password == payload['password']:
         new_access_token = generate_access_token()
         current_user.access_token = new_access_token
-        current_user.expires_at = str(datetime.utcnow() + timedelta(minutes=1))
+        current_user.expires_at = str(datetime.utcnow() + timedelta(minutes=duration_minutes_access_token))
         db.commit()
         return {"access_token": new_access_token}
 
@@ -40,16 +41,19 @@ def auth(payload: Dict, db: Session = Depends(get_db)):
 
 @router.post("/create")
 def auth(payload: Dict, db: Session = Depends(get_db)):
+
     if db.query(User).filter(User.login == payload['login']).first():
         raise HTTPException(status_code=400, detail="Login already registered")
 
     access_token = generate_access_token()
 
+    duration_minutes_access_token = 5
+
     new_user = User(
         login=str(payload['login']),
         password=str(payload['password']),
         access_token=str(access_token),
-        expires_at=str(datetime.utcnow() + timedelta(hours=1))
+        expires_at=str(datetime.utcnow() + timedelta(minutes=duration_minutes_access_token))
     )
 
     db.add(new_user)
