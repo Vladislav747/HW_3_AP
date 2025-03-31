@@ -1,0 +1,15 @@
+[run]
+source = backend/
+omit =
+    */__init__.py
+    */alembic/*
+    */tests/*
+    */models/*
+    */schemas/*
+    */main.py
+    */security/*
+    */cache.py
+
+[report]
+show_missing = True
+fail_under = 90
