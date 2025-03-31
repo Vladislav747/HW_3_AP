@@ -17,6 +17,7 @@ def test_db():
     yield
     Base.metadata.drop_all(bind=engine)
 
+
 @pytest.fixture
 def client(test_db):
     with TestClient(app) as c:

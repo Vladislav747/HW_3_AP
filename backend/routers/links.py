@@ -5,7 +5,7 @@ from starlette.responses import RedirectResponse
 
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, HttpUrl, ValidationError
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from datetime import datetime
 
@@ -160,7 +160,7 @@ async def update_link(
 
 @router.get(
     "/expired",
-    response_model=List[LinkExpiredResponse],
+    response_model=Union[List[LinkExpiredResponse], Dict[str, str]],
 )
 def get_expired_links(db: Session = Depends(get_db)):
     now = datetime.utcnow()

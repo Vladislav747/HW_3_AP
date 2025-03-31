@@ -12,3 +12,7 @@ pytest -s -v
 coverage run -m pytest tests/
 ```
 
+Запуск нагрузочного тестирования
+```
+locust -f tests/load_testing/locustfile.py
+```
