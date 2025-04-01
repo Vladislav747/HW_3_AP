@@ -9,3 +9,11 @@
 #     response = client.get(f"/{short_code}", follow_redirects=False)
 #     assert response.status_code == 302
 #     assert response.headers["location"] == "https://example.com"
+
+
+# def test_create_user(client):
+#     response = client.post(
+#         "/user/create",
+#         json={"login": "admin", "password": "admin"}
+#     )
+#     assert response.status_code == 200
