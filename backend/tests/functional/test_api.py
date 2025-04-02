@@ -41,6 +41,75 @@ def test_create_user(client):
     assert response.status_code == 200
 
 
+def test_create_with_alias(client, mock_redis):
+    fake = Faker()
+    short_code = fake.user_name()
+
+    login, password = fake.user_name(), fake.password()
+
+    # Сначала создаем пользователя
+    response = client.post(
+        "/user/create",
+        json={"login": login, "password": password}
+    )
+    assert response.status_code == 200
+    # Авторизуемся
+    response = client.post(
+        "/user/auth",
+        json={"login": login, "password": password}
+    )
+    assert response.status_code == 200
+
+    access_token = response.json().get('access_token')
+    # Сокращаем ссылку
+    response = client.post(
+        "/links/shorten",
+        json={"original_url": "https://example.com", "custom_alias": short_code},
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+    assert response.status_code == 200
+    short_code_res = response.json()["short_code"]
+
+    assert short_code_res == short_code
+
+
+def test_delete_link(client, mock_redis):
+    fake = Faker()
+    short_code = fake.user_name()
+
+    login, password = fake.user_name(), fake.password()
+    # Сначала создаем пользователя
+    response = client.post(
+        "/user/create",
+        json={"login": login, "password": password}
+    )
+    assert response.status_code == 200
+    # Авторизуемся
+    response = client.post(
+        "/user/auth",
+        json={"login": login, "password": password}
+    )
+    assert response.status_code == 200
+
+    access_token = response.json().get('access_token')
+    # Сокращаем ссылку
+    response = client.post(
+        "/links/shorten",
+        json={"original_url": "https://example.com", "custom_alias": short_code},
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+    assert response.status_code == 200
+    short_code_res = response.json()["short_code"]
+
+    assert short_code_res == short_code
+
+    response = client.delete(
+        f"/links/{short_code}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    assert response.status_code == 200
+
 # @pytest.mark.asyncio
 # async def test_redis_calls(client, mock_redis):
 #     # Настраиваем возвращаемые значения
